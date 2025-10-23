@@ -4,7 +4,7 @@ A technical proof of concept demonstrating real-time audio interaction with Open
 
 ## About
 
-This demo was vibe-coded for a presentation at the [Sardines.rb meetup](https://www.meetup.com/sardinesrb/events/311340390/). It serves as a practical example of integrating OpenAI's Realtime API with a Ruby backend.
+This demo was vibe-coded for a presentation at the [Sardines.rb meetup](https://www.meetup.com/sardinesrb/events/311340390/). It serves as a practical example of using Ruby as a backend for voice AI agents using OpenAI's Realtime API, with a React-based client for testing.
 
 ## Architecture
 
@@ -99,27 +99,6 @@ Open your browser and navigate to the URL shown in the client terminal (usually 
 3. The server forwards the audio data to OpenAI's Realtime API
 4. OpenAI processes the audio and sends responses back through the server
 5. The client receives and plays the audio responses
-
-## Project Structure
-
-```
-sardines-rb-demo/
-├── server/
-│   ├── run.rb              # Main WebSocket server
-│   ├── test.rb             # Test file
-│   ├── Gemfile             # Ruby dependencies
-│   ├── .env.example        # Example environment variables
-│   └── fixtures/           # Test fixtures
-│
-└── client/
-    ├── src/
-    │   ├── App.jsx         # Main React component
-    │   ├── components/     # React components
-    │   ├── hooks/          # Custom React hooks
-    │   └── utils/          # Utility functions
-    ├── package.json        # Node dependencies
-    └── vite.config.js      # Vite configuration
-```
 
 ## Development Notes
 

@@ -1,5 +1,6 @@
 require 'faye/websocket'
 require 'thin'
+require 'json'
 
 # Load the Thin adapter
 Faye::WebSocket.load_adapter('thin')
@@ -15,13 +16,35 @@ App = lambda do |env|
 
     ws.on :message do |event|
       msg = event.data
-      puts "Received: #{msg}"
+      puts "Received message: #{msg[0..100]}#{msg.length > 100 ? '...' : ''}"
 
-      if msg == 'ping'
-        ws.send('pong')
-        puts "Sent: pong"
-      else
-        ws.send(msg) # Echo back other messages
+      begin
+        # Parse JSON message
+        data = JSON.parse(msg)
+        event_type = data['event']
+
+        case event_type
+        when 'ping'
+          # Respond with pong event
+          response = { event: 'pong' }.to_json
+          ws.send(response)
+          puts "Sent: #{response}"
+
+        when 'data'
+          # Print the payload data
+          payload = data['payload']
+          puts "Data event received - payload size: #{payload&.length || 0} bytes"
+          puts "Payload preview: #{payload&.[](0..50)}..." if payload
+          # No response needed for data events
+
+        else
+          puts "Unknown event type: #{event_type}"
+        end
+
+      rescue JSON::ParserError => e
+        puts "Error parsing JSON: #{e.message}"
+        error_response = { event: 'error', message: 'Invalid JSON' }.to_json
+        ws.send(error_response)
       end
     end
 

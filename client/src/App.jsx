@@ -1,28 +1,50 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Waveform } from './components/Waveform';
 import { useWebSocket } from './hooks/useWebSocket';
 import { AudioStreamProcessor } from './utils/audioProcessing';
+import { AudioPlayback } from './utils/audioPlayback';
 import './App.css';
 
 function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [permissionError, setPermissionError] = useState(null);
   const [analyser, setAnalyser] = useState(null);
-  const { isConnected, error: wsError, sendMessage } = useWebSocket();
   const audioProcessorRef = useRef(null);
   const mediaStreamRef = useRef(null);
+  const audioPlaybackRef = useRef(null);
 
+  // Initialize audio playback and cleanup on unmount
   useEffect(() => {
-    // Cleanup on unmount
+    audioPlaybackRef.current = new AudioPlayback(24000);
+
     return () => {
+      // Cleanup audio playback
+      if (audioPlaybackRef.current) {
+        audioPlaybackRef.current.close();
+      }
+      // Cleanup audio processor
       if (audioProcessorRef.current) {
         audioProcessorRef.current.stop();
       }
+      // Cleanup media stream
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
+
+  // Handle incoming WebSocket messages
+  const handleMessage = useCallback((data) => {
+    // Check if this is an audio delta message
+    if (data.type === 'response.output_audio.delta' && data.delta) {
+      console.log('Playing audio chunk from server, delta length:', data.delta.length);
+      if (audioPlaybackRef.current) {
+        audioPlaybackRef.current.playChunk(data.delta);
+      }
+    }
+  }, []);
+
+  const { isConnected, error: wsError, sendMessage } = useWebSocket(handleMessage);
 
   const handleStartStop = async () => {
     if (isRecording) {

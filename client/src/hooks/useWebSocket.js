@@ -2,11 +2,17 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 const WS_URL = 'ws://127.0.0.1:5613';
 
-export const useWebSocket = () => {
+export const useWebSocket = (onMessage) => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  const onMessageRef = useRef(onMessage);
+
+  // Keep onMessage ref updated
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
   const connect = useCallback(() => {
     try {
@@ -35,8 +41,17 @@ export const useWebSocket = () => {
       };
 
       ws.onmessage = (event) => {
-        console.log('Received from server:', event.data);
-        // Handle server responses if needed
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received from server:', data);
+
+          // Call the message handler if provided
+          if (onMessageRef.current) {
+            onMessageRef.current(data);
+          }
+        } catch (err) {
+          console.error('Error parsing WebSocket message:', err);
+        }
       };
 
       wsRef.current = ws;

@@ -37,44 +37,15 @@ REALTIME_SESSION_CONFIG = {
     audio: {
       input: {
         noise_reduction: nil,
-        # turn_detection: nil,
-        # turn_detection: {
-        #   type: "semantic_vad",
-        #   eagerness: "auto",
-        #   create_response: true,
-        #   # interrupt_response: true,
-        # },
         turn_detection: {
           type: "server_vad",
           threshold: 0.2,
           prefix_padding_ms: 300,
           silence_duration_ms: 300,
-          # idle_timeout_ms: 5000
         },
       },
     },
     tracing: 'auto',
-    # turn_detection: {
-    #   type: "semantic_vad",
-    #   eagerness: "low",
-    #   create_response: true,
-    #   interrupt_response: true,
-    # },
-    # turn_detection: {
-    #   type: "server_vad",
-    #   threshold: 1,
-    #   prefix_padding_ms: 300,
-    #   silence_duration_ms: 500,
-    # },
-    # voice: "ash",
-    # input_audio_format: "pcm16",
-    # output_audio_format: "pcm16",
-    # input_audio_transcription: nil,
-    # turn_detection: nil,
-    # tools: [],
-    # tool_choice: "auto",
-    # temperature: 0.8,
-    # max_response_output_tokens: "inf"
   }
 }
 
@@ -181,21 +152,6 @@ App = lambda do |env|
 
         in { event: 'finish' }
           puts "Received finish event, transforming and adding commit command to queue"
-          # Transform commit message before queuing
-          # commit_message = {
-          #   "type" => "input_audio_buffer.commit"
-          # }.to_json
-          #
-          # audio_queue.push(commit_message)
-          # puts "Queue size: #{audio_queue.size}"
-          
-          # commit_message = {
-          #   "type" => "response.create"
-          # }.to_json
-          #
-          # audio_queue.push(commit_message)
-          # puts "Queue size: #{audio_queue.size}"
-
         else
           puts "Unknown event type received: #{parsed_msg[:event]}"
         end

@@ -1,14 +1,15 @@
 # WebSocket Audio Streamer Client
 
-A React application that streams microphone audio to a WebSocket server in PCM16 24kHz format.
+A React application that streams microphone audio to a WebSocket server and plays back audio responses in PCM16 24kHz format.
 
 ## Features
 
-- Real-time microphone audio streaming
-- WebSocket connection with automatic reconnection
-- Audio waveform visualization
-- PCM16 format at 24kHz sample rate
-- Connection status indicator
+- **Real-time microphone audio streaming** - Captures and streams audio to server
+- **Audio playback** - Receives and plays audio responses from server
+- **WebSocket connection** - Bidirectional audio communication with automatic reconnection
+- **Audio waveform visualization** - Real-time oscilloscope display using Canvas
+- **PCM16 format at 24kHz** - High-quality audio processing
+- **Connection status indicator** - Visual feedback for connection state
 
 ## Prerequisites
 
@@ -48,7 +49,7 @@ The application will be available at `http://localhost:5173`
 
 ## WebSocket Message Format
 
-### Sending Audio Data
+### Sending Audio Data (to server)
 
 ```json
 {
@@ -57,13 +58,29 @@ The application will be available at `http://localhost:5173`
 }
 ```
 
-### Sending Finish Event
+### Sending Finish Event (to server)
 
 ```json
 {
   "event": "finish"
 }
 ```
+
+### Receiving Audio Data (from server)
+
+```json
+{
+  "type": "response.output_audio.delta",
+  "event_id": "event_...",
+  "response_id": "resp_...",
+  "item_id": "item_...",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "<base64-encoded-pcm16-audio>"
+}
+```
+
+The client automatically decodes the `delta` field and plays back audio received from the server.
 
 ## Build for Production
 
@@ -77,6 +94,9 @@ The production build will be in the `dist/` directory.
 
 - **React** - UI framework
 - **Vite** - Build tool and dev server
-- **@cleandersonlobo/react-mic** - Audio visualization
-- **Web Audio API** - Audio processing
-- **WebSocket API** - Real-time communication
+- **Web Audio API** - Audio capture, processing, and playback
+- **Canvas API** - Real-time waveform visualization
+- **WebSocket API** - Bidirectional real-time communication
+- **MediaStream API** - Microphone access
+
+All audio handling uses native browser APIs - no external dependencies!

@@ -3,11 +3,12 @@ require 'eventmachine'
 require 'base64'
 require 'wavefile'
 require 'json'
+require 'thread'
 
 # Test configuration
 HOST = '127.0.0.1'
 PORT = 5613
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 4096 
 FILE_PATH = File.join(__dir__, 'fixtures', 'question.wav')
 
 puts "Starting chunked file transfer test..."
@@ -52,43 +53,59 @@ end
 puts "Chunks: #{chunks.length}"
 puts "-" * 50
 
+# Create a queue for chunks to send
+chunk_queue = Queue.new
+
 EM.run do
   ws = Faye::WebSocket::Client.new("ws://#{HOST}:#{PORT}")
-  chunk_index = 0
   chunks_sent = 0
+  sender_timer = nil
 
   timeout = EventMachine::Timer.new(30) do
     puts "✗ FAIL: Timeout"
     ws.close(1000, "Timeout")
   end
 
-  ws.on :open do |_event|
-    puts "Connected - waiting 2 seconds before sending..."
+  # Sequential sender function - processes queue one message at a time
+  send_next_message = lambda do
+    unless chunk_queue.empty?
+      message_data = chunk_queue.pop(true) rescue nil  # non-blocking pop
 
-    # Wait 2 seconds, then start sending chunks
-    EventMachine::Timer.new(2) do
-      puts "Starting to send chunks..."
+      if message_data
+        event_type, payload = message_data
 
-      chunks.each_with_index do |chunk, index|
-        # Encode chunk to base64
-        encoded = Base64.strict_encode64(chunk)
+        if event_type == :finish
+          # Send finish event
+          message = { event: 'finish' }.to_json
+          puts "Sending finish event to commit audio buffer"
+          ws.send(message)
+        else
+          # Send audio chunk
+          index = event_type
+          chunk = payload
 
-        # Create JSON message with event and payload
-        message = {
-          event: 'data',
-          payload: encoded
-        }.to_json
+          # Encode chunk to base64
+          encoded = Base64.strict_encode64(chunk)
 
-        puts "[Chunk #{index + 1}/#{chunks.length}] Sending #{chunk.bytesize} bytes (base64: #{encoded.length} chars)"
-        ws.send(message)
-        chunks_sent += 1
+          # Create JSON message with event and payload
+          message = {
+            event: 'data',
+            payload: encoded
+          }.to_json
+
+          puts "[Chunk #{index + 1}/#{chunks.length}] Sending #{chunk.bytesize} bytes (base64: #{encoded.length} chars)"
+          ws.send(message)
+          chunks_sent += 1
+        end
       end
+    else
+      # Queue is empty, stop the timer
+      sender_timer.cancel if sender_timer
+      puts "All messages sent!"
 
-      puts "All chunks sent!"
-
-      # Wait a bit for server to process, then close
-      EventMachine::Timer.new(2) do
-        puts "✓ SUCCESS: Sent all #{chunks_sent} chunks to server"
+      # Wait 20 seconds for server to process and receive responses, then close
+      EventMachine::Timer.new(20) do
+        puts "✓ SUCCESS: Sent all #{chunks_sent} chunks + finish event to server"
         timeout.cancel
         ws.close(1000, "Test complete")
         exit(0)
@@ -96,9 +113,32 @@ EM.run do
     end
   end
 
+  ws.on :open do |_event|
+    puts "Connected - waiting 2 seconds before sending..."
+
+    # Wait 3 seconds, then start the sequential sender
+    EventMachine::Timer.new(3) do
+      puts "Starting sequential chunk sender..."
+
+      # Populate the queue with all chunks
+      chunks.each_with_index do |chunk, index|
+        chunk_queue.push([index, chunk])
+      end
+
+      # Add finish event to queue after all chunks
+      chunk_queue.push([:finish, nil])
+      puts "Added finish event to queue"
+
+      # Start periodic timer to send messages sequentially (every 50ms)
+      sender_timer = EventMachine::PeriodicTimer.new(0.05) do
+        send_next_message.call
+      end
+    end
+  end
+
   ws.on :message do |event|
     message = event.data
-    puts "Received response: '#{message[0..50]}#{message.length > 50 ? '...' : ''}'"
+    puts "Received response: #{message}"
 
     # Parse JSON response
     begin

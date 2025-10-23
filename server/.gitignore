@@ -1,0 +1,25 @@
+# Environment variables
+.env
+
+# Bundler
+.bundle/
+vendor/bundle/
+
+# Ruby
+*.gem
+*.rbc
+.rbenv-version
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
